@@ -39,7 +39,10 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
+# Globals
 REPO="jairussw/modus-cli"
+CLI_NAME="modus"
+
 get_latest_release() {
   curl -w "%{stderr}" --silent "https://api.github.com/repos/$REPO/releases/latest" | \
     tr -d '\n' | \
@@ -66,7 +69,7 @@ download_release_from_repo() {
   local hash="$4"
   local tmpdir="$5"
   local postfix=$(release_file_postfix $os_info)
-  local filename="hyp-$version-$arch-$os_info.$postfix"
+  local filename="$CLI_NAME-$version-$arch-$os_info.$postfix"
   local download_file="$tmpdir/$filename"
   local archive_url="$(release_url)/download/$version/$filename"
   info $archive_url
