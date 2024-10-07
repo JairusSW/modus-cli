@@ -68,8 +68,8 @@ download_release_from_repo() {
   local os_info="$3"
   local hash="$4"
   local tmpdir="$5"
-  local postfix=$(release_file_postfix $os_info)
-  local filename="$CLI_NAME-$version-$arch-$os_info.$postfix"
+  local postfix=".tar.gz"
+  local filename="$CLI_NAME-$version-$os_info-$arch.$postfix"
   local download_file="$tmpdir/$filename"
   local archive_url="$(release_url)/download/$version/$filename"
   info $archive_url
