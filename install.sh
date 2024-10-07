@@ -7,7 +7,7 @@
 
 # BSD 2-CLAUSE LICENSE
 #
-# Copyright (c) 2017, The Wasmtime Contributors.
+# Copyright (c) 2017, The Modus Contributors.
 # All rights reserved.
 #
 # This product includes:
@@ -80,18 +80,18 @@ download_release_from_repo() {
 
 usage() {
     cat >&2 <<END_USAGE
-wasmtime-install: The installer for Wasmtime
+modus-install: The installer for Modus
 
 USAGE:
-    wasmtime-install [FLAGS] [OPTIONS]
+    modus-install [FLAGS] [OPTIONS]
 
 FLAGS:
     -h, --help                  Prints help information
 
 OPTIONS:
-        --dev                   Compile and install Wasmtime locally, using the dev target
-        --release               Compile and install Wasmtime locally, using the release target
-        --version <version>     Install a specific release version of Wasmtime
+        --dev                   Compile and install Modus locally, using the dev target
+        --release               Compile and install Modus locally, using the release target
+        --version <version>     Install a specific release version of Modus
 END_USAGE
 }
 
@@ -187,26 +187,26 @@ build_path_str() {
     # fish uses a little different syntax to modify the PATH
     cat <<END_FISH_SCRIPT
 
-set -gx WASMTIME_HOME "$profile_install_dir"
+set -gx MODUS_HOME "$profile_install_dir"
 
-string match -r ".wasmtime" "\$PATH" > /dev/null; or set -gx PATH "\$WASMTIME_HOME/bin" \$PATH
+string match -r ".modus" "\$PATH" > /dev/null; or set -gx PATH "\$MODUS_HOME/bin" \$PATH
 END_FISH_SCRIPT
   else
     # bash and zsh
     cat <<END_BASH_SCRIPT
 
-export WASMTIME_HOME="$profile_install_dir"
+export MODUS_HOME="$profile_install_dir"
 
-export PATH="\$WASMTIME_HOME/bin:\$PATH"
+export PATH="\$MODUS_HOME/bin:\$PATH"
 END_BASH_SCRIPT
   fi
 }
 
-# check for issue with WASMTIME_HOME
+# check for issue with MODUS_HOME
 # if it is set, and exists, but is not a directory, the install will fail
-wasmtime_home_is_ok() {
-  if [ -n "${WASMTIME_HOME-}" ] && [ -e "$WASMTIME_HOME" ] && ! [ -d "$WASMTIME_HOME" ]; then
-    error "\$WASMTIME_HOME is set but is not a directory ($WASMTIME_HOME)."
+MODUS_HOME_is_ok() {
+  if [ -n "${MODUS_HOME-}" ] && [ -e "$MODUS_HOME" ] && ! [ -d "$MODUS_HOME" ]; then
+    error "\$MODUS_HOME is set but is not a directory ($MODUS_HOME)."
     eprintf "Please check your profile scripts and environment."
     return 1
   fi
@@ -229,10 +229,10 @@ update_profile() {
     eprintf "$path_str"
     return 1
   else
-    if ! command grep -qc 'WASMTIME_HOME' "$detected_profile"; then
+    if ! command grep -qc 'MODUS_HOME' "$detected_profile"; then
       command printf "$path_str\n" >> "$detected_profile"
     else
-      warning "Your profile ($detected_profile) already mentions Wasmtime and has not been changed."
+      warning "Your profile ($detected_profile) already mentions Modus and has not been changed."
     fi
   fi
 }
@@ -243,10 +243,10 @@ upgrade_is_ok() {
   local install_dir="$2"
   local is_dev_install="$3"
 
-  local wasmtime_bin="$install_dir/bin/wasmtime"
+  local modus_bin="$install_dir/bin/modus"
 
-  if [[ -n "$install_dir" && -x "$wasmtime_bin" ]]; then
-    local prev_version="$( ($wasmtime_bin --version 2>/dev/null || echo 0.1) | sed -E 's/^.*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/')"
+  if [[ -n "$install_dir" && -x "$modus_bin" ]]; then
+    local prev_version="$( ($modus_bin --version 2>/dev/null || echo 0.1) | sed -E 's/^.*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/')"
     # if this is a local dev install, skip the equality check
     # if installing the same version, this is a no-op
     if [ "$is_dev_install" != "true" ] && [ "v$prev_version" == "$will_install_version" ]; then
@@ -315,7 +315,7 @@ create_tree() {
 
   info 'Creating' "directory layout"
 
-  # .wasmtime/
+  # .modus/
   #     bin/
 
   mkdir -p "$install_dir"
@@ -326,27 +326,27 @@ install_version() {
   local version_to_install="$1"
   local install_dir="$2"
 
-  if ! wasmtime_home_is_ok; then
+  if ! MODUS_HOME_is_ok; then
     exit 1
   fi
 
   case "$version_to_install" in
     latest)
       local latest_version="$(get_latest_release)"
-      info 'Installing' "latest version of Wasmtime ($latest_version)"
+      info 'Installing' "latest version of Modus ($latest_version)"
       install_release "$latest_version" "$install_dir"
       ;;
     local-dev)
-      info 'Installing' "Wasmtime locally after compiling"
+      info 'Installing' "Modus locally after compiling"
       install_local "dev" "$install_dir"
       ;;
     local-release)
-      info 'Installing' "Wasmtime locally after compiling with '--release'"
+      info 'Installing' "Modus locally after compiling with '--release'"
       install_local "release" "$install_dir"
       ;;
     *)
       # assume anything else is a specific version
-      info 'Installing' "Wasmtime version $version_to_install"
+      info 'Installing' "Modus version $version_to_install"
       install_release "$version_to_install" "$install_dir"
       ;;
   esac
@@ -354,7 +354,7 @@ install_version() {
   if [ "$?" == 0 ]
   then
       update_profile "$install_dir" &&
-      info "Finished" 'installation. Open a new terminal to start using Wasmtime!'
+      info "Finished" 'installation. Open a new terminal to start using Modus!'
   fi
 }
 
@@ -381,14 +381,14 @@ install_release() {
   local install_dir="$2"
   local is_dev_install="false"
 
-  info 'Checking' "for existing Wasmtime installation"
+  info 'Checking' "for existing Modus installation"
   if upgrade_is_ok "$version" "$install_dir" "$is_dev_install"
   then
     download_archive="$(download_release "$version"; exit "$?")"
     exit_status="$?"
     if [ "$exit_status" != 0 ]
     then
-      error "Could not download Wasmtime version '$version'. See $(release_url) for a list of available releases"
+      error "Could not download Modus version '$version'. See $(release_url) for a list of available releases"
       return "$exit_status"
     fi
 
@@ -405,7 +405,7 @@ install_local() {
   # this is a local install, so skip the version equality check
   local is_dev_install="true"
 
-  info 'Checking' "for existing Wasmtime installation"
+  info 'Checking' "for existing Modus installation"
   install_version="$(parse_cargo_version "$(<Cargo.toml)" )" || return 1
   if no_legacy_install && upgrade_is_ok "$install_version" "$install_dir" "$is_dev_install"
   then
@@ -449,7 +449,7 @@ download_release() {
   local os_info
   os_info="$(parse_os_info "$uname_str")"
   if [ "$?" != 0 ]; then
-    error "The current operating system ($uname_str) does not appear to be supported by Wasmtime."
+    error "The current operating system ($uname_str) does not appear to be supported by Modus."
     return 1
   fi
   local pretty_os_name="$(parse_os_pretty "$uname_str")"
@@ -476,7 +476,7 @@ install_from_file() {
 
   create_tree "$copy_to"
 
-  info 'Extracting' "Wasmtime binaries"
+  info 'Extracting' "Modus binaries"
   # extract the files to the temp directory
   if [[ $archive == *.zip ]]; then
     unzip -q "$archive" -d  "$extract_to"
@@ -486,7 +486,7 @@ install_from_file() {
 
   # copy the files to the specified directory
   # binaries go into the bin folder
-  cp "$extracted_path/wasmtime" "$copy_to/bin"
+  cp "$extracted_path/modus" "$copy_to/bin"
 
   # the others directly into the specified folder
   cp "$extracted_path/LICENSE" "$extracted_path/README.md" "$copy_to"
@@ -499,7 +499,7 @@ get_architecture() {
         arm64)
             arch=aarch64
             ;;
-        # Linux identifies RISC-V as "riscv64", but wasmtime tags
+        # Linux identifies RISC-V as "riscv64", but modus tags
         # their releases using the toolchain name "riscv64gc"
         # When encountering riscv64, map it to that name.
         riscv64)
@@ -539,7 +539,7 @@ check_architecture() {
           ;;
   esac
 
-  error "Sorry! Wasmtime currently only provides pre-built binaries for x86_64 (Linux, macOS, Windows), aarch64 (Linux, macOS), s390x (Linux) and riscv64 (Linux)."
+  error "Sorry! Modus currently only provides pre-built binaries for x86_64 (Linux, macOS, Windows), aarch64 (Linux, macOS), s390x (Linux) and riscv64 (Linux)."
   return 1
 }
 
@@ -550,8 +550,8 @@ return 0 2>/dev/null
 # default to installing the latest available version
 version_to_install="latest"
 
-# install to WASMTIME_HOME, defaulting to ~/.wasmtime
-install_dir="${WASMTIME_HOME:-"$HOME/.wasmtime"}"
+# install to MODUS_HOME, defaulting to ~/.modus
+install_dir="${MODUS_HOME:-"$HOME/.modus"}"
 
 # parse command line options
 while [ $# -gt 0 ]
