@@ -41,7 +41,7 @@ jobs:
 
       - name: Rename tarballs
         run: |
-          for file in ./dist/*; do
+          for file in ./dist/*.tar.gz; do
             new_file=$(echo "$file" | sed "s/$SHORT_SHA//")
             mv "$file" "$new_file"
             echo "$file -> $new_file"
