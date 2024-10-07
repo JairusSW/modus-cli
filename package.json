@@ -1,0 +1,80 @@
+{
+  "name": "@hypermode/modus-cli",
+  "version": "0.0.0",
+  "description": "The Modus CLI",
+  "author": "Hypermode, Inc.",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "hyp": "bin/run.js"
+  },
+  "scripts": {
+    "pack": "oclif pack tarballs --parallel --no-xz",
+    "build": "shx rm -rf dist && tsc -b",
+    "lint": "eslint . --ext .ts",
+    "postpack": "shx rm -f oclif.manifest.json",
+    "posttest": "npm run lint",
+    "prepack": "oclif manifest",
+    "test": "mocha --forbid-only \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@oclif/core": "^4",
+    "@oclif/plugin-help": "^6",
+    "@oclif/plugin-plugins": "^5",
+    "chalk": "^5.3.0",
+    "ora": "^8.1.0"
+  },
+  "devDependencies": {
+    "@oclif/prettier-config": "^0.2.1",
+    "@oclif/test": "^4",
+    "@types/node": "^18",
+    "eslint": "^8",
+    "eslint-config-oclif": "^5",
+    "eslint-config-oclif-typescript": "^3",
+    "eslint-config-prettier": "^9",
+    "oclif": "^4",
+    "shx": "^0.3.3",
+    "ts-node": "^10",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "/bin",
+    "/dist",
+    "/oclif.manifest.json"
+  ],
+  "keywords": [
+    "Hypermode",
+    "WebAssembly",
+    "AI",
+    "Modus",
+    "API",
+    "Runtime",
+    "SDK"
+  ],
+  "oclif": {
+    "bin": "modus",
+    "helpClass": "./dist/custom/help",
+    "dirname": "modus",
+    "commands": "./dist/commands",
+    "topicSeparator": " ",
+    "topics": {
+      "sdk": {
+        "description": "Modus SDK version manager"
+      }
+    },
+    "plugins": []
+  },
+  "homepage": "https://github.com/hypermodeinc/modus",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hypermodeinc/modus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hypermodeinc/modus/issues"
+  }
+}
