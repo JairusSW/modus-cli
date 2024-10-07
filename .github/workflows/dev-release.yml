@@ -37,10 +37,19 @@ jobs:
 
       - name: Rename tarballs
         run: |
-          for file in ./dist/modus-v${{ steps.package-version.outputs.current-version }}-*; do
-            mv "$file" "${file%-*}.tar.gz"
+          cd ./dist
+          for file in *.tar.gz; do
+              new_file="${file%-*}.tar.gz"
+              if [[ "$file" != "$new_file" ]]; then
+                  mv "$file" "$new_file"
+                  echo "Renamed '$file' to '$new_file'"
+              fi
           done
-          
+
+      - name: Get commit hash
+        id: short-sha
+        run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
