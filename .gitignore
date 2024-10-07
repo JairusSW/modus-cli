@@ -2,5 +2,4 @@
 oclif.manifest.json
 tsconfig.tsbuildinfo
 node_modules/
-bin/
 dist/

@@ -39,15 +39,16 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
+REPO="jairussw/modus-cli"
 get_latest_release() {
-  curl -w "%{stderr}" --silent "https://api.github.com/repos/jairussw/modus-cli/releases/latest" | \
+  curl -w "%{stderr}" --silent "https://api.github.com/repos/$REPO/releases/latest" | \
     tr -d '\n' | \
     sed 's/.*tag_name": *"//' | \
     sed 's/".*//'
 }
 
 release_url() {
-  echo "https://github.com/bytecodealliance/wasmtime/releases"
+  echo "https://github.com/$REPO/releases"
 }
 
 release_file_postfix(){
@@ -62,9 +63,10 @@ download_release_from_repo() {
   local version="$1"
   local arch="$2"
   local os_info="$3"
-  local tmpdir="$4"
+  local hash="$4"
+  local tmpdir="$5"
   local postfix=$(release_file_postfix $os_info)
-  local filename="wasmtime-$version-$arch-$os_info.$postfix"
+  local filename="hyp-$version-$arch-$os_info.$postfix"
   local download_file="$tmpdir/$filename"
   local archive_url="$(release_url)/download/$version/$filename"
   info $archive_url
