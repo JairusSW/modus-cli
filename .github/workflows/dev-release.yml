@@ -50,15 +50,15 @@ jobs:
       - name: Convert Windows release to .zip
         run: |
           for file in ./dist/*win32*.tar.gz; do
-            mkdir -p ./dist/extracted
-            tar -xzf "$file" -C ./dist/extracted > /dev/null 2>&1
-            base_name=$(basename "$file" .tar.gz)
-            if [ "$(ls -A ./dist/extracted)" ]; then
-              echo "${base_name}.tar.gz -> ${base_name}.zip"
-              zip -r "./dist/${base_name}.zip" ./dist/extracted > /dev/null 2>&1
-              rm "$file"
-              rm -rf ./dist/extracted/*
-            fi
+              mkdir -p ./dist/extracted
+              tar -xzf "$file" -C ./dist/extracted > /dev/null 2>&1
+              base_name=$(basename "$file" .tar.gz)
+              if [ "$(ls -A ./dist/extracted)" ]; then
+                  echo "${base_name}.tar.gz -> ${base_name}.zip"
+                  zip -r "./dist/${base_name}.zip" "./dist/extracted/modus" > /dev/null 2>&1
+                  rm "$file"
+                  rm -rf ./dist/extracted/*
+              fi
           done
 
 
