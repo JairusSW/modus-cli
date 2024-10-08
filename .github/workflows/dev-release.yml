@@ -50,13 +50,13 @@ jobs:
       - name: Convert Windows release to .zip
         run: |
           for file in ./dist/*win32*.tar.gz; do
-            # Extract the tar.gz file
+            mkdir -p ./dist/extracted
             tar -xzf "$file" -C ./dist/extracted
-            # Get the base filename without extension
             base_name=$(basename "$file" .tar.gz)
-            # Create a zip file from the extracted contents
             zip -r "./dist/${base_name}.zip" "./dist/extracted/*"
             echo "Created zip: ./dist/${base_name}.zip"
+            rm "$file"
+            rm -rf ./dist/extracted/*
           done
 
       - name: Create release
@@ -64,7 +64,9 @@ jobs:
         with:
           tag_name: v${{ steps.package-version.outputs.current-version }}
           draft: ${{ env.draft }}
-          files: ./dist/*.tar.gz
+          files: |
+            ./dist/*.tar.gz   # Keep Linux and Darwin tar.gz files
+            ./dist/*.zip      # Add all created zip files (converted for win32)
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
