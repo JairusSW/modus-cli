@@ -82,9 +82,7 @@ jobs:
         with:
           tag_name: v${{ steps.package-version.outputs.current-version }}
           draft: ${{ env.draft }}
-          files: |
-            ./dist/*.tar.gz   # Keep Linux and Darwin tar.gz files
-            ./dist/*.zip      # Add all created zip files (converted for win32)
+          files: ./dist/*modus-v${{ steps.package-version.outputs.current-version }}*
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
