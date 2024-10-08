@@ -55,7 +55,7 @@ jobs:
               base_name=$(basename "$file" .tar.gz)
               if [ "$(ls -A ./dist/extracted)" ]; then
                   echo "${base_name}.tar.gz -> ${base_name}.zip"
-                  zip -r "./dist/${base_name}.zip" "./dist/extracted/modus" > /dev/null 2>&1
+                  zip -r "./dist/${base_name}.zip" "./dist/extracted/*" > /dev/null 2>&1
                   rm "$file"
                   rm -rf ./dist/extracted/*
               fi
