@@ -50,14 +50,32 @@ jobs:
       - name: Convert Windows release to .zip
         run: |
           for file in ./dist/*win32*.tar.gz; do
+            # Create the extracted directory
             mkdir -p ./dist/extracted
+
+            # Extract the contents of the .tar.gz file into ./dist/extracted
             tar -xzf "$file" -C ./dist/extracted
+
+            # Get the base name without the .tar.gz extension
             base_name=$(basename "$file" .tar.gz)
-            zip -r "./dist/${base_name}.zip" "./dist/extracted/*"
-            echo "Created zip: ./dist/${base_name}.zip"
-            rm "$file"
-            rm -rf ./dist/extracted/*
+
+            # Ensure there are extracted files before zipping
+            if [ "$(ls -A ./dist/extracted)" ]; then
+              # Create a .zip file from the extracted contents
+              zip -r "./dist/${base_name}.zip" ./dist/extracted
+              echo "Created zip: ./dist/${base_name}.zip"
+
+              # Remove the original .tar.gz file
+              rm "$file"
+              echo "Removed $file"
+
+              # Clean up the extracted folder
+              rm -rf ./dist/extracted/*
+            else
+              echo "No files extracted from $file. Skipping zip creation."
+            fi
           done
+
 
       - name: Create release
         uses: softprops/action-gh-release@v1
