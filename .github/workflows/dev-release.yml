@@ -47,6 +47,18 @@ jobs:
             echo "$file -> $new_file"
           done
 
+      - name: Convert Windows release to .zip
+        run: |
+          for file in ./dist/*win32*.tar.gz; do
+            # Extract the tar.gz file
+            tar -xzf "$file" -C ./dist/extracted
+            # Get the base filename without extension
+            base_name=$(basename "$file" .tar.gz)
+            # Create a zip file from the extracted contents
+            zip -r "./dist/${base_name}.zip" "./dist/extracted/*"
+            echo "Created zip: ./dist/${base_name}.zip"
+          done
+
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
