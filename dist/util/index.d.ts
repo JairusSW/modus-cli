@@ -1,0 +1,12 @@
+import { Interface } from "node:readline";
+import { Command } from "@oclif/core";
+export declare function ensureDir(dir: string): Promise<void>;
+export declare function expandHomeDir(filePath: string): string;
+export declare function isRunnable(cmd: string): boolean;
+export declare function cloneRepo(url: string, pth: string): Promise<boolean>;
+export declare function ask(question: string, rl: Interface, placeholder?: string): Promise<string>;
+export declare function clearLine(): void;
+export declare function getAvailablePackageManagers(): string[];
+export declare function getLatestCLI(): string;
+export declare function checkVersion(instance: Command): void;
+export declare function downloadFile(url: string, dest: string): Promise<void>;

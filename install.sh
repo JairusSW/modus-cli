@@ -233,4 +233,6 @@ check_platform || exit 1
 
 install_version
 
+chmod +x "$INSTALL_DIR/script/modus"
+
 restart_shell
