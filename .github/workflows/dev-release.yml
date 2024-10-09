@@ -26,8 +26,8 @@ jobs:
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies (production)
+        run: npm install --production
 
       - name: Build files
         run: npm run build
@@ -39,34 +39,12 @@ jobs:
         id: short-sha
         run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
 
-      - name: Rename tarballs
-        run: |
-          for file in ./dist/*.tar.gz; do
-            new_file=$(echo "$file" | sed "s/-$SHORT_SHA//")
-            mv "$file" "$new_file"
-            echo "$file -> $new_file"
-          done
-
-      - name: Convert Windows release to .zip
-        run: |
-          for file in ./dist/*win32*.tar.gz; do
-              mkdir -p ./dist/extracted
-              tar -xzf "$file" -C ./dist/extracted > /dev/null 2>&1
-              base_name=$(basename "$file" .tar.gz)
-              if [ "$(ls -A ./dist/extracted)" ]; then
-                  echo "${base_name}.tar.gz -> ${base_name}.zip"
-                  (cd dist/extracted; zip -r "../${base_name}.zip" "./modus/" > /dev/null 2>&1)
-                  rm "$file"
-                  rm -rf ./dist/extracted/*
-              fi
-          done
-
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.package-version.outputs.current-version }}
           draft: ${{ env.draft }}
-          files: ./dist/*modus-v${{ steps.package-version.outputs.current-version }}*
+          files: ./build/*
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

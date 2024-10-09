@@ -8,13 +8,12 @@
  */
 
 import { Args, Command, Flags } from "@oclif/core";
-import { expandHomeDir } from "../../util/index.js";
-import { Metadata } from "../../util/metadata.js";
+import { expandHomeDir, isRunnable } from "../../util/index.js";
 import BuildCommand from "../build/index.js";
 import path from "path";
-import { copyFileSync, existsSync, readFileSync, watch as watchFolder } from "fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync, watch, writeFileSync } from "fs";
 import chalk from "chalk";
-import { spawn } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import os from "node:os";
 
 export default class Run extends Command {
@@ -22,7 +21,8 @@ export default class Run extends Command {
     path: Args.string({
       description: "./my-project-|-Path to project directory",
       hidden: false,
-      required: false
+      required: false,
+      default: "./"
     }),
   };
 
@@ -58,6 +58,17 @@ export default class Run extends Command {
       required: false,
       default: 3000
     }),
+    runtime: Flags.string({
+      char: "r",
+      description: "Runtime to use",
+      hidden: false,
+      required: false,
+      default: getLatestRuntime()
+    }),
+    legacy: Flags.boolean({
+      description: "Run if you want a pre-modus release",
+      default: false
+    })
   };
 
   static description = "Launch a Modus app to local development";
@@ -66,15 +77,23 @@ export default class Run extends Command {
 
   async run(): Promise<void> {
     const { args, flags } = await this.parse(Run);
-    const runtimePath = expandHomeDir("~/.hypermode/sdk/" + Metadata.runtime_version + "/runtime") + (os.platform() === "win32" ? ".exe" : "");
+    const isDev = flags.legacy || flags.runtime && (flags.runtime.startsWith("dev-") || flags.runtime.startsWith("link"));
+    const runtimePath = path.join(expandHomeDir("~/.modus/sdk/" + (isDev ? "" : "v") + flags.runtime), flags.legacy ? "" : (isDev ? "/runtime" : "/runtime" + (os.platform() === "win32" ? ".exe" : "")));
 
-    const cwd = args.path ? path.join(process.cwd(), args.path) : process.cwd();
-    const watch = flags.watch;
+    const cwd = path.join(process.cwd(), args.path);
+    const _watch = flags.watch;
+
+    if (!flags.runtime) {
+      this.logError("Modus Runtime is not installed!\n Run `modus sdk install latest` and try again!");
+      process.exit(0);
+    }
 
     if (!existsSync(path.join(cwd))) {
       this.logError("Could not target folder! Please try again");
       process.exit(0);
     }
+
+    // TODO: Check the type of SDK we are running
 
     if (!existsSync(path.join(cwd, "/node_modules"))) {
       this.logError("Dependencies not installed! Please install dependencies by running `npm i` and try again");
@@ -86,8 +105,17 @@ export default class Run extends Command {
       process.exit(0);
     }
 
+    let install_cmd = flags.runtime;
+    if (isDev) {
+      if (install_cmd.startsWith("link")) {
+        install_cmd = "--link ./path-to-modus";
+      } else if (install_cmd.startsWith("dev-")) {
+        install_cmd = "--branch " + install_cmd.split("-")[1] + " --commit " + install_cmd.split("-")[2];
+      }
+    }
+
     if (!existsSync(runtimePath)) {
-      this.logError("Modus Runtime v" + Metadata.runtime_version + " not installed! Run `modus sdk install " + Metadata.runtime_version + "` and try again!");
+      this.logError("Modus Runtime  " + runtimePath + "  " + (isDev ? "" : "v") + flags.runtime + " not installed!\n Run `modus sdk install v" + install_cmd + "` and try again!");
       process.exit(0);
     }
 
@@ -99,21 +127,59 @@ export default class Run extends Command {
       process.exit(0);
     }
 
-    try {
-      if (flags.build) await BuildCommand.run(args.path ? [args.path] : []);
-    } catch { }
     const build_wasm = path.join(cwd, "/build/" + project_name + ".wasm");
-    const deploy_wasm = expandHomeDir("~/.hypermode/" + project_name + ".wasm");
+    try {
+      if (flags.build || !existsSync(build_wasm)) await BuildCommand.run(args.path ? [args.path] : []);
+    } catch { }
+    const deploy_wasm = expandHomeDir("~/.modus/" + project_name + ".wasm");
     copyFileSync(build_wasm, deploy_wasm);
 
-    spawn(runtimePath, {
-      stdio: "inherit", env: {
-        ...process.env,
-        MODUS_ENV: "dev"
+    if (isDev) {
+      if (!isRunnable("go")) {
+        this.logError("Cannot find any valid versions of Go! Please install go")
       }
-    });
+      if (flags.legacy) {
+        writeFileSync(path.join(runtimePath, "config/version.go"), `package config
 
-    if (watch) {
+func GetProductVersion() string {
+	return "Hypermode Runtime " + GetVersionNumber()
+}
+
+func GetVersionNumber() string {
+	return "modus-cli/${flags.runtime}"
+}`);
+      } else {
+        execSync("go run ./tools/generate_version", {
+          cwd: runtimePath,
+          stdio: "ignore",
+          env: {
+            ...process.env,
+            MODUS_ENV: "dev",
+            MODUS_BUILD_VERSION: "modus-cli/" + flags.runtime
+          }
+        });
+      }
+
+      execSync("go run .", {
+        cwd: runtimePath,
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          MODUS_ENV: "dev",
+          MODUS_BUILD_VERSION: "modus-cli/" + flags.runtime
+        }
+      });
+    } else {
+      spawnSync(runtimePath, {
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          MODUS_ENV: "dev"
+        }
+      });
+    }
+
+    if (_watch) {
       const delay = flags.freq;
       let lastModified = 0;
       let lastBuild = 0;
@@ -133,7 +199,7 @@ export default class Run extends Command {
         copyFileSync(build_wasm, deploy_wasm);
       }, delay);
 
-      watchFolder(path.join(cwd, "/assembly"), () => {
+      watch(path.join(cwd, "/assembly"), () => {
         lastModified = Date.now();
         paused = false;
       });
@@ -143,4 +209,13 @@ export default class Run extends Command {
   private logError(message: string) {
     this.log("\n" + chalk.red(" ERROR ") + chalk.dim(": " + message));
   }
+}
+
+function getLatestRuntime(): string | undefined {
+  let versions: string[] = [];
+  try {
+    versions = readdirSync(expandHomeDir("~/.modus/sdk/")).reverse().filter(v => !v.startsWith("dev-") && !v.startsWith("link"));
+  } catch { }
+  if (!versions.length) return undefined;
+  return versions[0];
 }

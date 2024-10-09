@@ -1,127 +1,42 @@
 #!/usr/bin/env bash
 
-# Copied from
-# https://github.com/volta-cli/volta/blob/master/dev/unix/volta-install.sh
+# Copyright 2024 Hypermode, Inc.
+# Licensed under the terms of the Apache License, Version 2.0
+# See the LICENSE file that accompanied this code for further details.
+#
+# SPDX-FileCopyrightText: 2024 Hypermode, Inc. <hello@hypermode.com>
+# SPDX-License-Identifier: Apache-2.0
 
-# LICENSE:
+# I'm hosting builds on my own fork until it goes live
 
-# BSD 2-CLAUSE LICENSE
-#
-# Copyright (c) 2017, The Modus Contributors.
-# All rights reserved.
-#
-# This product includes:
-#
-# Contributions from LinkedIn Corporation
-# Copyright (c) 2017, LinkedIn Corporation.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# The views and conclusions contained in the software and documentation are those
-# of the authors and should not be interpreted as representing official policies,
-# either expressed or implied, of the FreeBSD Project.
+# Config
+GIT_REPO="JairusSW/modus-cli"
+INSTALL_DIR="${MODUS_CLI:-"$HOME/.modus/cli"}"
+VERSION="latest"
 
-# Globals
-REPO="jairussw/modus-cli"
-CLI_NAME="modus"
+# Properties
+ARCH="$(uname -m)"
+OS="$(uname -s)"
 
 get_latest_release() {
-  curl -w "%{stderr}" --silent "https://api.github.com/repos/$REPO/releases/latest" | \
-    tr -d '\n' | \
-    sed 's/.*tag_name": *"//' | \
-    sed 's/".*//'
-}
-
-release_url() {
-  echo "https://github.com/$REPO/releases"
-}
-
-release_file_postfix(){
-    if [ "$1" == "mingw" ]; then
-        echo "zip"
-    else
-        echo "tar.xz"
-    fi
+  curl -w "%{stderr}" --silent "https://api.github.com/repos/$GIT_REPO/releases/latest" |
+    grep '"tag_name"' |
+    sed -E 's/.*"([^"]+)".*/\1/'
 }
 
 download_release_from_repo() {
   local version="$1"
   local arch="$2"
-  local os_info="$3"
-  local hash="$4"
-  local tmpdir="$5"
-  local postfix=".tar.gz"
-  local filename="$CLI_NAME-$version-$os_info-$arch.$postfix"
+  local os="$3"
+  local tmpdir="$4"
+  local filename="modus-$version-$os-$arch.tar.gz"
   local download_file="$tmpdir/$filename"
-  local archive_url="$(release_url)/download/$version/$filename"
-  info $archive_url
+  local archive_url="https://github.com/$GIT_REPO/releases/download/$version/$filename"
 
   curl --progress-bar --show-error --location --fail "$archive_url" \
-       --output "$download_file" && echo "$download_file"
+    --output "$download_file" && echo "$download_file"
 }
 
-usage() {
-    cat >&2 <<END_USAGE
-modus-install: The installer for Modus
-
-USAGE:
-    modus-install [FLAGS] [OPTIONS]
-
-FLAGS:
-    -h, --help                  Prints help information
-
-OPTIONS:
-        --dev                   Compile and install Modus locally, using the dev target
-        --release               Compile and install Modus locally, using the release target
-        --version <version>     Install a specific release version of Modus
-END_USAGE
-}
-
-info() {
-  local action="$1"
-  local details="$2"
-  command printf '\033[1;32m%12s\033[0m %s\n' "$action" "$details" 1>&2
-}
-
-error() {
-  command printf '\033[1;31mError\033[0m: %s\n\n' "$1" 1>&2
-}
-
-warning() {
-  command printf '\033[1;33mWarning\033[0m: %s\n\n' "$1" 1>&2
-}
-
-request() {
-  command printf '\033[1m%s\033[0m\n' "$1" 1>&2
-}
-
-eprintf() {
-  command printf '%s\n' "$1" 1>&2
-}
-
-bold() {
-  command printf '\033[1m%s\033[0m' "$1"
-}
-
-# If file exists, echo it
 echo_fexists() {
   [ -f "$1" ] && echo "$1"
 }
@@ -135,78 +50,53 @@ detect_profile() {
     return
   fi
 
-  # try to detect the current shell
   case "$shellname" in
-    bash)
-      # Shells on macOS default to opening with a login shell, while Linuxes
-      # default to a *non*-login shell, so if this is macOS we look for
-      # `.bash_profile` first; if it's Linux, we look for `.bashrc` first. The
-      # `*` fallthrough covers more than just Linux: it's everything that is not
-      # macOS (Darwin). It can be made narrower later if need be.
-      case $uname in
-        Darwin)
-          echo_fexists "$HOME/.bash_profile" || echo_fexists "$HOME/.bashrc"
-        ;;
-        *)
-          echo_fexists "$HOME/.bashrc" || echo_fexists "$HOME/.bash_profile"
-        ;;
-      esac
-      ;;
-    zsh)
-      echo "$HOME/.zshrc"
-      ;;
-    fish)
-      echo "$HOME/.config/fish/config.fish"
+  bash)
+    case $uname in
+    Darwin)
+      echo_fexists "$HOME/.bash_profile" || echo_fexists "$HOME/.bashrc"
       ;;
     *)
-      # Fall back to checking for profile file existence. Once again, the order
-      # differs between macOS and everything else.
-      local profiles
-      case $uname in
-        Darwin)
-          profiles=( .profile .bash_profile .bashrc .zshrc .config/fish/config.fish )
-          ;;
-        *)
-          profiles=( .profile .bashrc .bash_profile .zshrc .config/fish/config.fish )
-          ;;
-      esac
-
-      for profile in "${profiles[@]}"; do
-        echo_fexists "$HOME/$profile" && break
-      done
+      echo_fexists "$HOME/.bashrc" || echo_fexists "$HOME/.bash_profile"
       ;;
+    esac
+    ;;
+  zsh)
+    echo "$HOME/.zshrc"
+    ;;
+  fish)
+    echo "$HOME/.config/fish/config.fish"
+    ;;
+  *)
+    local profiles
+    case $uname in
+    Darwin)
+      profiles=(.profile .bash_profile .bashrc .zshrc .config/fish/config.fish)
+      ;;
+    *)
+      profiles=(.profile .bashrc .bash_profile .zshrc .config/fish/config.fish)
+      ;;
+    esac
+
+    for profile in "${profiles[@]}"; do
+      echo_fexists "$HOME/$profile" && break
+    done
+    ;;
   esac
 }
 
-# generate shell code to source the loading script and modify the path for the input profile
 build_path_str() {
-  local profile="$1"
-  local profile_install_dir="$2"
-
-  if [[ $profile =~ \.fish$ ]]; then
-    # fish uses a little different syntax to modify the PATH
-    cat <<END_FISH_SCRIPT
-
-set -gx MODUS_HOME "$profile_install_dir"
-
-string match -r ".modus" "\$PATH" > /dev/null; or set -gx PATH "\$MODUS_HOME/bin" \$PATH
-END_FISH_SCRIPT
+  local profile="$1" install_dir="$2"
+  if [[ $profile == *.fish ]]; then
+    echo -e "set -gx MODUS_CLI \"$install_dir\"\nstring match -r \".modus\" \"\$PATH\" > /dev/null; or set -gx PATH \"\$MODUS_CLI/bin\" \$PATH"
   else
-    # bash and zsh
-    cat <<END_BASH_SCRIPT
-
-export MODUS_HOME="$profile_install_dir"
-
-export PATH="\$MODUS_HOME/bin:\$PATH"
-END_BASH_SCRIPT
+    echo -e "\n# Modus CLI\nexport MODUS_CLI=\"$install_dir\"\nexport PATH=\"\$MODUS_CLI/bin:\$PATH\""
   fi
 }
 
-# check for issue with MODUS_HOME
-# if it is set, and exists, but is not a directory, the install will fail
-MODUS_HOME_is_ok() {
-  if [ -n "${MODUS_HOME-}" ] && [ -e "$MODUS_HOME" ] && ! [ -d "$MODUS_HOME" ]; then
-    error "\$MODUS_HOME is set but is not a directory ($MODUS_HOME)."
+cli_dir_valid() {
+  if [ -n "${MODUS_CLI-}" ] && [ -e "$MODUS_CLI" ] && ! [ -d "$MODUS_CLI" ]; then
+    error "\$MODUS_CLI is set but is not a directory ($MODUS_CLI)."
     eprintf "Please check your profile scripts and environment."
     return 1
   fi
@@ -214,376 +104,133 @@ MODUS_HOME_is_ok() {
 }
 
 update_profile() {
-  local install_dir="$1"
+  local install_dir="$1" detected_profile="$(detect_profile $(basename "$SHELL") $(uname -s))"
+  local path_str="$(build_path_str "$detected_profile" "$install_dir")"
 
-  local profile_install_dir=$(echo "$install_dir" | sed "s:^$HOME:\$HOME:")
-  local detected_profile="$(detect_profile $(basename "/$SHELL") $(uname -s) )"
-  local path_str="$(build_path_str "$detected_profile" "$profile_install_dir")"
-  info 'Editing' "user profile ($detected_profile)"
-
-  if [ -z "${detected_profile-}" ] ; then
-    error "No user profile found."
-    eprintf "Tried \$PROFILE ($PROFILE), ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.profile, and ~/.config/fish/config.fish."
-    eprintf ''
-    eprintf "You can either create one of these and try again or add this to the appropriate file:"
-    eprintf "$path_str"
+  if [ -z "$detected_profile" ]; then
+    echo "No user profile found."
+    echo "$path_str"
     return 1
-  else
-    if ! command grep -qc 'MODUS_HOME' "$detected_profile"; then
-      command printf "$path_str\n" >> "$detected_profile"
-    else
-      warning "Your profile ($detected_profile) already mentions Modus and has not been changed."
-    fi
   fi
-}
 
-# Check if it is OK to upgrade to the new version
-upgrade_is_ok() {
-  local will_install_version="$1"
-  local install_dir="$2"
-  local is_dev_install="$3"
-
-  local modus_bin="$install_dir/bin/modus"
-
-  if [[ -n "$install_dir" && -x "$modus_bin" ]]; then
-    local prev_version="$( ($modus_bin --version 2>/dev/null || echo 0.1) | sed -E 's/^.*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/')"
-    # if this is a local dev install, skip the equality check
-    # if installing the same version, this is a no-op
-    if [ "$is_dev_install" != "true" ] && [ "v$prev_version" == "$will_install_version" ]; then
-      eprintf "Version $will_install_version already installed"
-      return 1
-    fi
-    # in the future, check $prev_version for incompatible upgrades
+  if ! grep -q 'MODUS_CLI' "$detected_profile"; then
+    printf "%s\n" "$path_str" >>"$detected_profile"
   fi
-  return 0
-}
-
-# returns the os name to be used in the packaged release,
-# including the openssl info if necessary
-parse_os_info() {
-  local uname_str="$1"
-  local openssl_version="$2"
-
-  case "$uname_str" in
-    Linux)
-      echo "linux"
-      ;;
-    Darwin)
-      echo "macos"
-      ;;
-    MINGW64*)
-      echo "mingw"
-      ;;
-    *)
-      return 1
-  esac
-  return 0
-}
-
-parse_os_pretty() {
-  local uname_str="$1"
-
-  case "$uname_str" in
-    Linux)
-      echo "Linux"
-      ;;
-    Darwin)
-      echo "macOS"
-      ;;
-    *)
-      echo "$uname_str"
-  esac
-}
-
-# return true(0) if the element is contained in the input arguments
-# called like:
-#  if element_in "foo" "${array[@]}"; then ...
-element_in() {
-  local match="$1";
-  shift
-
-  local element;
-  # loop over the input arguments and return when a match is found
-  for element in "$@"; do
-    [ "$element" == "$match" ] && return 0
-  done
-  return 1
-}
-
-create_tree() {
-  local install_dir="$1"
-
-  info 'Creating' "directory layout"
-
-  # .modus/
-  #     bin/
-
-  mkdir -p "$install_dir"
-  mkdir -p "$install_dir"/bin
+  echo "[3/5] Added modus to PATH"
 }
 
 install_version() {
-  local version_to_install="$1"
-  local install_dir="$2"
-
-  if ! MODUS_HOME_is_ok; then
+  if ! cli_dir_valid; then
     exit 1
   fi
 
-  case "$version_to_install" in
-    latest)
-      local latest_version="$(get_latest_release)"
-      info 'Installing' "latest version of Modus ($latest_version)"
-      install_release "$latest_version" "$install_dir"
-      ;;
-    local-dev)
-      info 'Installing' "Modus locally after compiling"
-      install_local "dev" "$install_dir"
-      ;;
-    local-release)
-      info 'Installing' "Modus locally after compiling with '--release'"
-      install_local "release" "$install_dir"
-      ;;
-    *)
-      # assume anything else is a specific version
-      info 'Installing' "Modus version $version_to_install"
-      install_release "$version_to_install" "$install_dir"
-      ;;
+  case "$VERSION" in
+  latest)
+    VERSION="$(get_latest_release)"
+    ;;
+  *) ;;
   esac
 
-  if [ "$?" == 0 ]
-  then
-      update_profile "$install_dir" &&
-      info "Finished" 'installation. Open a new terminal to start using Modus!'
+  echo -e "${BOLD}${BLUE}Modus${RESET} Installer ${DIM}(${VERSION})${RESET}\n"
+
+  install_release
+  if [ "$?" == 0 ]; then
+    update_profile "$INSTALL_DIR" &&
+      echo "[4/5] Installed Modus CLI"
   fi
-}
-
-# parse the 'version = "X.Y.Z"' line from the input Cargo.toml contents
-# and return the version string
-parse_cargo_version() {
-  local contents="$1"
-
-  while read -r line
-  do
-    if [[ "$line" =~ ^version\ =\ \"(.*)\" ]]
-    then
-      echo "${BASH_REMATCH[1]}"
-      return 0
-    fi
-  done <<< "$contents"
-
-  error "Could not determine the current version from Cargo.toml"
-  return 1
 }
 
 install_release() {
-  local version="$1"
-  local install_dir="$2"
-  local is_dev_install="false"
-
-  info 'Checking' "for existing Modus installation"
-  if upgrade_is_ok "$version" "$install_dir" "$is_dev_install"
-  then
-    download_archive="$(download_release "$version"; exit "$?")"
-    exit_status="$?"
-    if [ "$exit_status" != 0 ]
-    then
-      error "Could not download Modus version '$version'. See $(release_url) for a list of available releases"
-      return "$exit_status"
-    fi
-
-    install_from_file "$download_archive" "$install_dir"
-  else
-    # existing legacy install, or upgrade problem
-    return 1
+  echo -e "[1/5] Fetching archive for $OS $ARCH"
+  download_archive="$(
+    download_release
+    exit "$?"
+  )"
+  exit_status="$?"
+  if [ "$exit_status" != 0 ]; then
+    error "Could not download Modus version '$VERSION'. See https://github.com/$GIT_REPO/releases/ for a list of available releases"
+    return "$exit_status"
   fi
-}
 
-install_local() {
-  local dev_or_release="$1"
-  local install_dir="$2"
-  # this is a local install, so skip the version equality check
-  local is_dev_install="true"
+  clear_line
+  clear_line
 
-  info 'Checking' "for existing Modus installation"
-  install_version="$(parse_cargo_version "$(<Cargo.toml)" )" || return 1
-  if no_legacy_install && upgrade_is_ok "$install_version" "$install_dir" "$is_dev_install"
-  then
-    # compile and package the binaries, then install from that local archive
-    compiled_archive="$(compile_and_package "$dev_or_release")" &&
-      install_from_file "$compiled_archive" "$install_dir"
-  else
-    # existing legacy install, or upgrade problem
-    return 1
-  fi
-}
+  echo "[1/5] Fetched archive for $OS $ARCH"
 
-compile_and_package() {
-  local dev_or_release="$1"
-
-  local release_output
-
-  # get the directory of this script
-  # (from https://stackoverflow.com/a/246128)
-  DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
-  # call the release script to create the packaged archive file
-  # '2> >(tee /dev/stderr)' copies stderr to stdout, to collect it and parse the filename
-  release_output="$( "$DIR/release.sh" "--$dev_or_release" 2> >(tee /dev/stderr) )"
-  [ "$?" != 0 ] && return 1
-
-  # parse the release filename and return that
-  if [[ "$release_output" =~ release\ in\ file\ (target[^\ ]+) ]]; then
-    echo "${BASH_REMATCH[1]}"
-  else
-    error "Could not determine output filename"
-    return 1
-  fi
+  install_from_file "$download_archive"
 }
 
 download_release() {
-  local version="$1"
-
-  local arch="$(get_architecture)"
-  local uname_str="$(uname -s)"
-  local os_info
-  os_info="$(parse_os_info "$uname_str")"
   if [ "$?" != 0 ]; then
-    error "The current operating system ($uname_str) does not appear to be supported by Modus."
+    error "The current operating system ($OS) does not appear to be supported by Modus."
     return 1
   fi
-  local pretty_os_name="$(parse_os_pretty "$uname_str")"
 
-  info 'Fetching' "archive for $pretty_os_name, version $version"
-  # store the downloaded archive in a temporary directory
   local download_dir="$(mktemp -d)"
-  download_release_from_repo "$version" "$arch" "$os_info" "$download_dir"
+  download_release_from_repo "$VERSION" "$ARCH" "$OS" "$download_dir"
 }
 
 install_from_file() {
   local archive="$1"
-  local copy_to="$2"
-  local extract_to="$(dirname $archive)"
+  local extract_to="$(dirname "$archive")"
 
-  local filename
-  if [[ $archive == *.zip ]]; then
-    filename=$(basename "$archive" .zip)
-  else
-    filename=$(basename "$archive" .tar.xz)
-  fi
+  echo "[2/5] Unpacking archive"
 
-  local extracted_path="$extract_to/$filename"
+  tar -xf "$archive" -C "$extract_to"
 
-  create_tree "$copy_to"
+  rm -rf "$INSTALL_DIR"
+  mkdir -p "$INSTALL_DIR"
+  rm -f "$archive"
+  mv "$extract_to/modus/"* "$INSTALL_DIR"
+  rm -rf "$extract_to"
 
-  info 'Extracting' "Modus binaries"
-  # extract the files to the temp directory
-  if [[ $archive == *.zip ]]; then
-    unzip -q "$archive" -d  "$extract_to"
-  else
-    tar -xvf "$archive" -C "$extract_to"
-  fi
-
-  # copy the files to the specified directory
-  # binaries go into the bin folder
-  cp "$extracted_path/modus" "$copy_to/bin"
-
-  # the others directly into the specified folder
-  cp "$extracted_path/LICENSE" "$extracted_path/README.md" "$copy_to"
+  clear_line
+  echo "[2/5] Unpacked archive"
 }
 
-get_architecture() {
-    local arch="$(uname -m)"
-    case "$arch" in
-        # macOS on aarch64 says "arm64" instead.
-        arm64)
-            arch=aarch64
-            ;;
-        # Linux identifies RISC-V as "riscv64", but modus tags
-        # their releases using the toolchain name "riscv64gc"
-        # When encountering riscv64, map it to that name.
-        riscv64)
-            arch=riscv64gc
-            ;;
-    esac
-    echo "$arch"
-}
-
-check_architecture() {
-  local version="$1"
-  local arch="$2"
-  local os="$3"
-
-  # Local version always allowed.
-  if [[ "$version" == "local"* ]]; then
-      return 0
-  fi
-
-  # Otherwise, check the matrix of OS/architecture support.
-  case "$arch/$os" in
-      # See the comment in get_architecture regarding this name.
-      riscv64gc/Linux)
-          return 0
-          ;;
-      aarch64/Linux)
-          return 0
-          ;;
-      aarch64/Darwin)
-          return 0
-          ;;
-      s390x/Linux)
-          return 0
-          ;;
-      x86_64/*)
-          return 0
-          ;;
+check_platform() {
+  case $ARCH in
+  aarch64) ARCH="arm64" ;;
+  x86_64) ARCH="x64" ;;
+  armv6l) ARCH="arm" ;;
+  *) ;;
   esac
 
-  error "Sorry! Modus currently only provides pre-built binaries for x86_64 (Linux, macOS, Windows), aarch64 (Linux, macOS), s390x (Linux) and riscv64 (Linux)."
-  return 1
+  case "$ARCH/$OS" in
+  x64/Linux | arm64/Linux | arm/Linux | x64/Darwin | arm64/Darwin) return 0 ;;
+  *)
+    echo -e "Unsupported os $OS $ARCH"
+    return 1
+    ;;
+  esac
 }
 
+restart_shell() {
+  local shell_name="$(basename "$SHELL")"
+  echo -e "[5/5] Restarted shell ${DIM}($shell_name)${RESET}\n\nThe Modus CLI has been installed! 🎉\nRun ${DIM}modus${RESET} to get started"
 
-# return if sourced (for testing the functions above)
-return 0 2>/dev/null
-
-# default to installing the latest available version
-version_to_install="latest"
-
-# install to MODUS_HOME, defaulting to ~/.modus
-install_dir="${MODUS_HOME:-"$HOME/.modus"}"
-
-# parse command line options
-while [ $# -gt 0 ]
-do
-  arg="$1"
-
-  case "$arg" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    --dev)
-      shift # shift off the argument
-      version_to_install="local-dev"
-      ;;
-    --release)
-      shift # shift off the argument
-      version_to_install="local-release"
-      ;;
-    --version)
-      shift # shift off the argument
-      version_to_install="$1"
-      shift # shift off the value
-      ;;
-    *)
-      error "unknown option: '$arg'"
-      usage
-      exit 1
-      ;;
+  case "$shell_name" in
+  bash | zsh | fish) exec "$shell_name" ;;
+  *)
+    echo -e "[5/5] Clean up\n\nPlease restart your shell for changes to take effect"
+    ;;
   esac
-done
+}
 
-check_architecture "$version_to_install" "$(get_architecture)" "$(uname)" || exit 1
+clear_line() {
+  echo -ne "\033[F\033[K"
+}
 
-install_version "$version_to_install" "$install_dir"
+# Colors
+BOLD="\e[1m"
+BLUE="\e[34;1m"
+DIM="\e[2m"
+RESET="\e[0m"
+
+# This is the entry point
+
+check_platform || exit 1
+
+install_version
+
+restart_shell
