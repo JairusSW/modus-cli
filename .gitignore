@@ -6,3 +6,5 @@ tsconfig.tsbuildinfo
 tmp/
 scripts/
 node-bin/
+node_modules/
+dist/
