@@ -29,10 +29,7 @@ jobs:
       - name: Install dependencies (production)
         run: npm install --production
 
-      - name: Build files
-        run: npm run build
-
-      - name: Build tarballs
+      - name: Package source files
         run: npm run pack
 
       - name: Get commit hash
