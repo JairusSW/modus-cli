@@ -30,9 +30,6 @@
     "ts-node": "^10",
     "typescript": "^5"
   },
-  "engines": {
-    "node": ">=22.0.0"
-  },
   "files": [
     "/bin",
     "/dist",
