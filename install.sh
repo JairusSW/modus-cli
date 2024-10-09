@@ -85,9 +85,9 @@ detect_profile() {
 build_path_str() {
   local profile="$1" install_dir="$2"
   if [[ $profile == *.fish ]]; then
-    echo -e "set -gx MODUS_CLI \"$install_dir\"\nstring match -r \".modus\" \"\$PATH\" > /dev/null; or set -gx PATH \"\$MODUS_CLI/.bin\" \$PATH"
+    echo -e "set -gx MODUS_CLI \"$install_dir\"\nstring match -r \".modus\" \"\$PATH\" > /dev/null; or set -gx PATH \"\$MODUS_CLI/script\" \$PATH"
   else
-    echo -e "\n# Modus CLI\nexport MODUS_CLI=\"$install_dir\"\nexport PATH=\"\$MODUS_CLI/.bin:\$PATH\""
+    echo -e "\n# Modus CLI\nexport MODUS_CLI=\"$install_dir\"\nexport PATH=\"\$MODUS_CLI/script:\$PATH\""
   fi
 }
 
